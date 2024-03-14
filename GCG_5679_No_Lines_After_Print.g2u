@@ -1,0 +1,192 @@
+Program.Sub.ScreenSU.Start
+Gui.F_PickList_Check..Create
+Gui.F_PickList_Check..Caption("Picklist Check")
+Gui.F_PickList_Check..Size(4560,1395)
+Gui.F_PickList_Check..MinX(0)
+Gui.F_PickList_Check..MinY(0)
+Gui.F_PickList_Check..Position(0,0)
+Gui.F_PickList_Check..BackColor(-2147483633)
+Gui.F_PickList_Check..MousePointer(0)
+Gui.F_PickList_Check..Event(UnLoad,F_PickList_Check_UnLoad)
+Gui.F_PickList_Check..MaxButton(False)
+Gui.F_PickList_Check..Sizeable(False)
+Gui.F_PickList_Check.framePickList.Create(Frame)
+Gui.F_PickList_Check.framePickList.Size(4050,975)
+Gui.F_PickList_Check.framePickList.Position(195,30)
+Gui.F_PickList_Check.chkPickList.Create(CheckBox)
+Gui.F_PickList_Check.chkPickList.Size(1635,360)
+Gui.F_PickList_Check.chkPickList.Position(270,360)
+Gui.F_PickList_Check.chkPickList.Parent("framePickList")
+Gui.F_PickList_Check.chkPickList.Caption("PickList Printed")
+Gui.F_PickList_Check.chkPickList.Event(Click,chkPickList_Click)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Author: Bix
+'Date: 16 Sept 2019
+'CRYSTORAMA, INC.
+'GCG_5679_No_Lines_After_Print.g2u
+'Prevents new order lines from being added if the order picklist has been printed
+V.Local.sError.Declare
+V.Local.sOrder.Declare
+V.Local.sLine.Declare
+F.Intrinsic.Control.Try
+
+F.Intrinsic.Control.SelectCase(V.Caller.Hook)
+	F.Intrinsic.Control.Case(11560)
+		'Order Header Populate Hook
+		V.Passed.000201.Set("PickList Chk")
+	F.Intrinsic.Control.Case(11870)
+		'Order Header Pre-Save Hook
+		F.Intrinsic.String.LPad(V.Passed.000003,"0",7,V.Local.sOrder)
+		F.Intrinsic.Control.CallSub(CheckPickList,"Order",V.Local.sOrder,"Line","")
+	F.Intrinsic.Control.Case(11910)
+		'Order Header Script 1 Button Hook
+		F.Intrinsic.Control.If(V.Passed.000003,=,"")
+			'need an order to proceed
+			F.Intrinsic.Control.End
+		F.Intrinsic.Control.EndIf
+		F.Intrinsic.String.LPad(V.Passed.000003,"0",7,V.Local.sOrder)
+		F.Intrinsic.Control.CallSub(OpenPickListCheckbox,"Order",V.Local.sOrder)
+	F.Intrinsic.Control.Case(12230)
+		'Order Lines Pre Save Hook
+		F.Intrinsic.String.LPad(V.Passed.000060,"0",7,V.Local.sOrder)
+		F.Intrinsic.String.LPad(V.Passed.000051,"0",3,V.Local.sLine)
+		F.Intrinsic.Control.CallSub(CheckPickList,"Order",V.Local.sOrder,"Line",V.Local.sLine)
+F.Intrinsic.Control.EndSelect
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.OpenPickListCheckbox.Start
+'V.Args.Order
+V.Local.sError.Declare
+V.Local.sSQL.Declare
+V.Local.sPickListFlag.Declare
+V.Local.bGroup.Declare
+F.Intrinsic.Control.Try
+
+F.Intrinsic.String.Build("select rtrim(FLAG_PICKLIST) from V_ORDER_HEADER where ORDER_NO = '{0}';",V.Args.Order,V.Local.sSQL)
+F.ODBC.Connection!con.OpenCompanyConnection
+F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL,V.Local.sPickListFlag)
+F.ODBC.Connection!con.Close
+F.Intrinsic.Control.If(V.Ambient.ExecuteAndReturnEOF)
+	'Order has not been saved. Exit
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.ElseIf(V.Local.sPickListFlag,=,"Y")
+	F.Intrinsic.Control.BlockEvents
+	Gui.F_PickList_Check.chkPickList.Value(1)
+	F.Intrinsic.Control.UnBlockEvents
+	F.Global.Security.IsInGroup(V.Caller.User,"PICKADMN",V.Local.bGroup)
+	F.Intrinsic.Control.If(V.Local.bGroup)
+		Gui.F_PickList_Check.framePickList.Caption("Uncheck to flag PickList as not having been printed")
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.String.Build("Picklist Check - {0}",V.Args.Order,V.Local.sSQL)
+Gui.F_PickList_Check..Caption(V.Local.sSQL)
+
+Gui.F_PickList_Check..Show
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.OpenPickListCheckbox.End
+
+Program.Sub.F_PickList_Check_UnLoad.Start
+F.Intrinsic.Control.End
+Program.Sub.F_PickList_Check_UnLoad.End
+
+Program.Sub.chkPickList_Click.Start
+V.Local.sError.Declare
+V.Local.sOrder.Declare
+V.Local.sSQL.Declare
+V.Local.bGroup.Declare
+F.Intrinsic.Control.Try
+
+F.Intrinsic.Control.BlockEvents
+
+F.Intrinsic.Control.If(V.Screen.F_PickList_Check!chkPickList.CheckedAsBoolean)
+	'Checkbox was not originally checked, don't do anything
+	Gui.F_PickList_Check.chkPickList.Value(0)
+	F.Intrinsic.Control.UnBlockEvents
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+
+F.Global.Security.IsInGroup(V.Caller.User,"PICKADMN",V.Local.bGroup)
+F.Intrinsic.Control.If(V.Local.bGroup.Not)
+	'User is not in admin group, reset check box and exit sub
+	Gui.F_PickList_Check.chkPickList.Value(1)
+	F.Intrinsic.Control.UnBlockEvents
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.String.Split(V.Screen.F_PickList_Check.Caption," - ",V.Local.sOrder)
+V.Local.sOrder(0).Set(V.Local.sOrder(1))
+V.Local.sOrder.RedimPreserve(0,0)
+F.Intrinsic.String.Build("update ORDER_HEADER set FLAG_PICKLIST = 'N' where ORDER_NO = '{0}' and RECORD_TYPE = 'A';",V.Local.sOrder,V.Local.sSQL)
+F.ODBC.Connection!con.OpenCompanyConnection
+F.ODBC.Connection!con.Execute(V.Local.sSQL)
+F.ODBC.Connection!con.Close
+Gui.F_PickList_Check.framePickList.Caption("")
+
+F.Intrinsic.Control.UnBlockEvents
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.chkPickList_Click.End
+
+Program.Sub.CheckPickList.Start
+'V.Args.Order, V.Args.Line
+V.Local.sError.Declare
+V.Local.sSQL.Declare
+F.Intrinsic.Control.Try
+
+'Rewrite - Customer doesn't want any lines edited after the picklist is printed
+'F.Intrinsic.String.Build("select 1 from V_ORDER_LINES where ORDER_NO = '{0}' and RECORD_NO = '{1}0';",V.Args.Order,V.Args.Line,V.Local.sSQL)
+F.ODBC.Connection!con.OpenCompanyConnection
+'F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL,V.Local.sSQL)
+'F.Intrinsic.Control.If(V.Ambient.ExecuteAndReturnEOF.Not)
+'	'Line already exists in DB, end
+'	F.Intrinsic.Control.End
+'F.Intrinsic.Control.EndIf
+
+F.Intrinsic.String.Build("select rtrim(FLAG_PICKLIST) from V_ORDER_HEADER where ORDER_NO = '{0}';",V.Args.Order,V.Local.sSQL)
+F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL,V.Local.sSQL)
+F.ODBC.Connection!con.Close
+F.Intrinsic.Control.If(V.Ambient.ExecuteAndReturnEOF)
+	'Order does not exist in DB, end
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.ElseIf(V.Local.sSQL,!=,"Y")
+	'PickList is not flagged as 'Printed', end
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndIf
+
+V.Passed.777777.Set(1)
+'F.Intrinsic.String.Build("PickList has already been printed for Order {1}. No new order lines can be added.{0}Canceling Save function.",V.Ambient.NewLine,V.Args.Order,V.Local.sSQL)
+F.Intrinsic.Control.If(V.Args.Line,!=,"")
+	F.Intrinsic.String.Build("PickList has already been printed for Order {1}. Updates to Order Lines are not allowed.{0}Canceling Save function.",V.Ambient.NewLine,V.Args.Order,V.Local.sSQL)
+F.Intrinsic.Control.Else
+	F.Intrinsic.String.Build("PickList has already been printed for Order {1}. Updates to the Order Header are not allowed.{0}Canceling Save function.",V.Ambient.NewLine,V.Args.Order,V.Local.sSQL)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.UI.Msgbox(V.Local.sSQL,"SAVE CANCELED")
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.CheckPickList.End
